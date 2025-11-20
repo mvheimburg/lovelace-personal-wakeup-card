@@ -138,16 +138,14 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
     }
     _updateConfig(partial) {
         const entityId = this._config.entity;
-        const [domain] = entityId.split(".");
-        this.hass.callService(domain, "set_config", {
+        this.hass.callService("personal_wakeup", "set_config", {
             entity_id: entityId,
             ...partial
         });
     }
     _triggerNow() {
         const entityId = this._config.entity;
-        const [domain] = entityId.split(".");
-        this.hass.callService(domain, "trigger_now", {
+        this.hass.callService("personal_wakeup", "trigger_now", {
             entity_id: entityId
         });
     }
