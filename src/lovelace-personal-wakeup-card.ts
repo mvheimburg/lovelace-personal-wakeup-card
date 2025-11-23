@@ -130,7 +130,6 @@ export class PersonalWakeupCard extends LitElement {
     const fadeDuration = Number(attrs.fade_duration ?? 900);
     const volume = Number(attrs.volume ?? 0.25);
     const playlist = attrs.playlist ?? "";
-    const playlistOptions: string[] = attrs.playlist_options ?? [];
     const nextFire: string | null = attrs.next_fire ?? null;
     const deviceTracker: string | null = attrs.device_tracker_entity ?? null;
 
@@ -139,6 +138,17 @@ export class PersonalWakeupCard extends LitElement {
 
     const title =
       this._config.name || stateObj.attributes.friendly_name || "Wakeup Alarm";
+
+    let playlistOptions: string[] = [];
+    if (Array.isArray(attrs.playlist_options)) {
+      playlistOptions = attrs.playlist_options as string[];
+    } else if (attrs.playlist_options) {
+      // handle string or anything weird by splitting on comma
+      playlistOptions = String(attrs.playlist_options)
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
 
     return html`
       <ha-card>

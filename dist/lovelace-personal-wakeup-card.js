@@ -167,12 +167,22 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         const fadeDuration = Number(attrs.fade_duration ?? 900);
         const volume = Number(attrs.volume ?? 0.25);
         const playlist = attrs.playlist ?? "";
-        const playlistOptions = attrs.playlist_options ?? [];
         const nextFire = attrs.next_fire ?? null;
         const deviceTracker = attrs.device_tracker_entity ?? null;
         const fadeMinutes = Math.round(fadeDuration / 60);
         const volumePercent = Math.round(volume * 100);
         const title = this._config.name || stateObj.attributes.friendly_name || "Wakeup Alarm";
+        let playlistOptions = [];
+        if (Array.isArray(attrs.playlist_options)) {
+            playlistOptions = attrs.playlist_options;
+        }
+        else if (attrs.playlist_options) {
+            // handle string or anything weird by splitting on comma
+            playlistOptions = String(attrs.playlist_options)
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+        }
         return x `
       <ha-card>
         <div class="header">
