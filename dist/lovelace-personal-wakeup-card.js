@@ -72,6 +72,113 @@ const t=t=>(e,o)=>{ void 0!==o?o.addInitializer((()=>{customElements.define(t,e)
  * SPDX-License-Identifier: BSD-3-Clause
  */function r(r){return n({...r,state:true,attribute:false})}
 
+let PersonalWakeupCardEditor = class PersonalWakeupCardEditor extends i {
+    setConfig(config) {
+        this._config = { ...config };
+    }
+    _valueChanged(ev) {
+        if (!this._config)
+            return;
+        const target = ev.target;
+        const field = target.dataset.configValue;
+        if (!field)
+            return;
+        const newConfig = { ...this._config };
+        if (target.value === "" && field !== "entity") {
+            delete newConfig[field];
+        }
+        else {
+            newConfig[field] = target.value;
+        }
+        const event = new CustomEvent("config-changed", {
+            detail: { config: newConfig }
+        });
+        this.dispatchEvent(event);
+    }
+    render() {
+        if (!this.hass || !this._config) {
+            return x ``;
+        }
+        const entity = this._config.entity || "";
+        const name = this._config.name || "";
+        const entities = Object.entries(this.hass.states)
+            .filter(([eid, state]) => {
+            if (!eid.startsWith("sensor."))
+                return false;
+            const attrs = state?.attributes ?? {};
+            return "time_of_day" in attrs && "fade_duration" in attrs;
+        })
+            .map(([eid]) => eid);
+        return x `
+      <div class="form">
+        <div class="row">
+          <label>Entity</label>
+          <select
+            .value=${entity}
+            data-config-value="entity"
+            @change=${this._valueChanged}
+          >
+            <option value="">-- Select wakeup alarm entity --</option>
+            ${entities.map((eid) => x `
+                <option value=${eid} ?selected=${eid === entity}>
+                  ${eid}
+                </option>
+              `)}
+          </select>
+        </div>
+
+        <div class="row">
+          <label>Name (optional)</label>
+          <input
+            type="text"
+            .value=${name}
+            data-config-value="name"
+            @input=${this._valueChanged}
+          />
+        </div>
+      </div>
+    `;
+    }
+};
+PersonalWakeupCardEditor.styles = i$3 `
+    .form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 8px;
+    }
+
+    .row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    label {
+      font-size: 0.9rem;
+      color: var(--secondary-text-color);
+    }
+
+    select,
+    input[type="text"] {
+      padding: 4px 6px;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      border: 1px solid var(--divider-color);
+      background: var(--card-background-color);
+      color: var(--primary-text-color);
+    }
+  `;
+__decorate([
+    n({ attribute: false })
+], PersonalWakeupCardEditor.prototype, "hass", void 0);
+__decorate([
+    r()
+], PersonalWakeupCardEditor.prototype, "_config", void 0);
+PersonalWakeupCardEditor = __decorate([
+    t("lovelace-personal-wakeup-card-editor")
+], PersonalWakeupCardEditor);
+
 let PersonalWakeupCard = class PersonalWakeupCard extends i {
     setConfig(config) {
         if (!config.entity) {
@@ -90,7 +197,7 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
     static getStubConfig() {
         return {
             type: "custom:lovelace-personal-wakeup-card",
-            entity: "wakeup_alarm.wakeup_alarm"
+            entity: "sensor.wakeup_alarm"
         };
     }
     _getEntity() {
@@ -168,7 +275,7 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         const volume = Number(attrs.volume ?? 0.25);
         const playlist = attrs.playlist ?? "";
         const nextFire = attrs.next_fire ?? null;
-        const deviceTracker = attrs.device_tracker_entity ?? null;
+        const personEntity = attrs.person_entity ?? null;
         const fadeMinutes = Math.round(fadeDuration / 60);
         const volumePercent = Math.round(volume * 100);
         const title = this._config.name || stateObj.attributes.friendly_name || "Wakeup Alarm";
@@ -284,8 +391,8 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
             <span class="value">
               ${this._formatNextFire(nextFire)}
             </span>
-            ${deviceTracker
-            ? x `<div class="small">Device: ${deviceTracker}</div>`
+            ${personEntity
+            ? x `<div class="small">Person: ${personEntity}</div>`
             : E}
           </div>
           <div class="chips">

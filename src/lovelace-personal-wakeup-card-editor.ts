@@ -48,9 +48,13 @@ export class PersonalWakeupCardEditor extends LitElement {
     const entity = this._config.entity || "";
     const name = this._config.name || "";
 
-    const entities = Object.keys(this.hass.states).filter((eid) =>
-      eid.startsWith("wakeup_alarm.")
-    );
+    const entities = Object.entries(this.hass.states)
+      .filter(([eid, state]) => {
+        if (!eid.startsWith("sensor.")) return false;
+        const attrs = state?.attributes ?? {};
+        return "time_of_day" in attrs && "fade_duration" in attrs;
+      })
+      .map(([eid]) => eid);
 
     return html`
       <div class="form">

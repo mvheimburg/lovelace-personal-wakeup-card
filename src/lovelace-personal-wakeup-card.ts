@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing } from "lit";
 import { property, state, customElement } from "lit/decorators.js";
+import "./lovelace-personal-wakeup-card-editor";
 
 interface HassEntity {
   entity_id: string;
@@ -48,7 +49,7 @@ export class PersonalWakeupCard extends LitElement {
   public static getStubConfig(): PersonalWakeupCardConfig {
     return {
       type: "custom:lovelace-personal-wakeup-card",
-      entity: "wakeup_alarm.wakeup_alarm"
+      entity: "sensor.wakeup_alarm"
     };
   }
 
@@ -131,7 +132,7 @@ export class PersonalWakeupCard extends LitElement {
     const volume = Number(attrs.volume ?? 0.25);
     const playlist = attrs.playlist ?? "";
     const nextFire: string | null = attrs.next_fire ?? null;
-    const deviceTracker: string | null = attrs.device_tracker_entity ?? null;
+    const personEntity: string | null = attrs.person_entity ?? null;
 
     const fadeMinutes = Math.round(fadeDuration / 60);
     const volumePercent = Math.round(volume * 100);
@@ -272,8 +273,8 @@ export class PersonalWakeupCard extends LitElement {
             <span class="value">
               ${this._formatNextFire(nextFire)}
             </span>
-            ${deviceTracker
-              ? html`<div class="small">Device: ${deviceTracker}</div>`
+            ${personEntity
+              ? html`<div class="small">Person: ${personEntity}</div>`
               : nothing}
           </div>
           <div class="chips">
