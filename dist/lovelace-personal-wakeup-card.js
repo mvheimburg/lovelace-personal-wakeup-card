@@ -256,6 +256,18 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
             entity_id: entityId
         });
     }
+    _snooze() {
+        const entityId = this._config.entity;
+        this.hass.callService("personal_wakeup", "snooze", {
+            entity_id: entityId
+        });
+    }
+    _stop() {
+        const entityId = this._config.entity;
+        this.hass.callService("personal_wakeup", "stop", {
+            entity_id: entityId
+        });
+    }
     render() {
         const stateObj = this._getEntity();
         if (!stateObj) {
@@ -276,6 +288,11 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         const playlist = attrs.playlist ?? "";
         const nextFire = attrs.next_fire ?? null;
         const personEntity = attrs.person_entity ?? null;
+        const canSnooze = Boolean(attrs.can_snooze) || stateObj.state === "triggered";
+        const canStop = Boolean(attrs.can_stop) ||
+            stateObj.state === "triggered" ||
+            stateObj.state === "snoozed";
+        const snoozeMinutes = Number(attrs.snooze_minutes ?? 10);
         const fadeMinutes = Math.round(fadeDuration / 60);
         const volumePercent = Math.round(volume * 100);
         const title = this._config.name || stateObj.attributes.friendly_name || "Wakeup Alarm";
@@ -395,10 +412,32 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
             ? x `<div class="small">Person: ${personEntity}</div>`
             : E}
           </div>
-          <div class="chips">
-            <div class="chip" @click=${() => this._triggerNow()}>
+          <div class="actions">
+            <button class="action" type="button" @click=${() => this._triggerNow()}>
               Trigger now
-            </div>
+            </button>
+            ${canSnooze
+            ? x `
+                  <button
+                    class="action action-secondary"
+                    type="button"
+                    @click=${() => this._snooze()}
+                  >
+                    Snooze ${snoozeMinutes} min
+                  </button>
+                `
+            : E}
+            ${canStop
+            ? x `
+                  <button
+                    class="action action-danger"
+                    type="button"
+                    @click=${() => this._stop()}
+                  >
+                    Stop
+                  </button>
+                `
+            : E}
           </div>
         </div>
       </ha-card>
@@ -464,6 +503,8 @@ PersonalWakeupCard.styles = i$3 `
       display: flex;
       justify-content: space-between;
       align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
       font-size: 0.8rem;
       color: var(--secondary-text-color);
     }
@@ -487,18 +528,40 @@ PersonalWakeupCard.styles = i$3 `
       width: 100%;
     }
 
-    .chips {
+    .actions {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
     }
 
-    .chip {
-      padding: 2px 8px;
+    .action {
+      padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid var(--divider-color);
-      font-size: 0.75rem;
+      background: var(--primary-color);
+      color: var(--text-primary-color, #fff);
+      font-size: 0.8rem;
+      font-weight: 600;
       cursor: pointer;
+      transition: opacity 120ms ease, transform 120ms ease;
+    }
+
+    .action:hover {
+      opacity: 0.92;
+    }
+
+    .action:active {
+      transform: translateY(1px);
+    }
+
+    .action-secondary {
+      background: transparent;
+      color: var(--primary-text-color);
+    }
+
+    .action-danger {
+      background: var(--error-color, #db4437);
+      color: var(--text-primary-color, #fff);
     }
 
     .error {
@@ -507,6 +570,12 @@ PersonalWakeupCard.styles = i$3 `
 
     .small {
       font-size: 0.75rem;
+    }
+
+    @media (max-width: 600px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
     }
   `;
 __decorate([

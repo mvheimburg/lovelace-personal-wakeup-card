@@ -2,6 +2,8 @@
 
 Lovelace card for controlling the `personal_wakeup` integration entity.
 
+The card surfaces `Trigger now`, `Snooze`, and `Stop` actions when the alarm is active.
+
 ## Build
 ```bash
 npm ci
