@@ -28,6 +28,7 @@ interface PersonalWakeupCardConfig {
 export class PersonalWakeupCard extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
   @state() private _config!: PersonalWakeupCardConfig;
+  @state() private _snoozeMinutes: number | null = null;
 
   public setConfig(config: PersonalWakeupCardConfig): void {
     if (!config.entity) {
@@ -42,7 +43,7 @@ export class PersonalWakeupCard extends LitElement {
   }
 
   // Called by HA visual editor
-  public static async getConfigElement(): Promise<Element> {
+  public static getConfigElement(): Element {
     return document.createElement("lovelace-personal-wakeup-card-editor");
   }
 
@@ -114,9 +115,13 @@ export class PersonalWakeupCard extends LitElement {
 
   private _snooze(): void {
     const entityId = this._config.entity;
+    const stateObj = this._getEntity();
+    const defaultMinutes = Number(stateObj?.attributes?.snooze_minutes ?? 10);
+    const durationMinutes = this._snoozeMinutes ?? defaultMinutes;
 
     this.hass.callService("personal_wakeup", "snooze", {
-      entity_id: entityId
+      entity_id: entityId,
+      duration_minutes: durationMinutes
     });
   }
 
@@ -155,7 +160,8 @@ export class PersonalWakeupCard extends LitElement {
       Boolean(attrs.can_stop) ||
       stateObj.state === "triggered" ||
       stateObj.state === "snoozed";
-    const snoozeMinutes = Number(attrs.snooze_minutes ?? 10);
+    const defaultSnoozeMinutes = Number(attrs.snooze_minutes ?? 10);
+    const snoozeMinutes = this._snoozeMinutes ?? defaultSnoozeMinutes;
 
     const fadeMinutes = Math.round(fadeDuration / 60);
     const volumePercent = Math.round(volume * 100);
@@ -291,7 +297,7 @@ export class PersonalWakeupCard extends LitElement {
         </div>
 
         <div class="footer">
-          <div>
+          <div class="footer-block">
             Next alarm:<br />
             <span class="value">
               ${this._formatNextFire(nextFire)}
@@ -299,33 +305,58 @@ export class PersonalWakeupCard extends LitElement {
             ${personEntity
               ? html`<div class="small">Person: ${personEntity}</div>`
               : nothing}
-          </div>
-          <div class="actions">
-            <button class="action" type="button" @click=${() => this._triggerNow()}>
-              Trigger now
-            </button>
             ${canSnooze
               ? html`
-                  <button
-                    class="action action-secondary"
-                    type="button"
-                    @click=${() => this._snooze()}
-                  >
-                    Snooze ${snoozeMinutes} min
-                  </button>
+                  <div class="snooze-control">
+                    <div class="snooze-header">
+                      <span class="label">Snooze delay</span>
+                      <span class="value">${snoozeMinutes} min</span>
+                    </div>
+                    <ha-slider
+                      min="5"
+                      max="60"
+                      step="5"
+                      .value=${snoozeMinutes}
+                      @input=${(e: Event) => {
+                        this._snoozeMinutes = Number(
+                          (e.target as HTMLInputElement).value
+                        );
+                      }}
+                    ></ha-slider>
+                  </div>
                 `
               : nothing}
-            ${canStop
-              ? html`
-                  <button
-                    class="action action-danger"
-                    type="button"
-                    @click=${() => this._stop()}
-                  >
-                    Stop
-                  </button>
-                `
-              : nothing}
+            <div class="actions">
+              <button
+                class="action"
+                type="button"
+                @click=${() => this._triggerNow()}
+              >
+                Trigger now
+              </button>
+              ${canSnooze
+                ? html`
+                    <button
+                      class="action action-secondary"
+                      type="button"
+                      @click=${() => this._snooze()}
+                    >
+                      Snooze ${snoozeMinutes} min
+                    </button>
+                  `
+                : nothing}
+              ${canStop
+                ? html`
+                    <button
+                      class="action action-danger"
+                      type="button"
+                      @click=${() => this._stop()}
+                    >
+                      Stop
+                    </button>
+                  `
+                : nothing}
+            </div>
           </div>
         </div>
       </ha-card>
@@ -388,13 +419,14 @@ export class PersonalWakeupCard extends LitElement {
 
     .footer {
       margin-top: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
       font-size: 0.8rem;
       color: var(--secondary-text-color);
+    }
+
+    .footer-block {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .time-input {
@@ -420,6 +452,20 @@ export class PersonalWakeupCard extends LitElement {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    .snooze-control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 280px;
+    }
+
+    .snooze-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
     }
 
     .action {

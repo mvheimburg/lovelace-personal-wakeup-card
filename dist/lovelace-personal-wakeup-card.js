@@ -91,7 +91,9 @@ let PersonalWakeupCardEditor = class PersonalWakeupCardEditor extends i {
             newConfig[field] = target.value;
         }
         const event = new CustomEvent("config-changed", {
-            detail: { config: newConfig }
+            detail: { config: newConfig },
+            bubbles: true,
+            composed: true
         });
         this.dispatchEvent(event);
     }
@@ -180,6 +182,10 @@ PersonalWakeupCardEditor = __decorate([
 ], PersonalWakeupCardEditor);
 
 let PersonalWakeupCard = class PersonalWakeupCard extends i {
+    constructor() {
+        super(...arguments);
+        this._snoozeMinutes = null;
+    }
     setConfig(config) {
         if (!config.entity) {
             throw new Error("You must define an entity for lovelace-personal-wakeup-card");
@@ -191,7 +197,7 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         return 4;
     }
     // Called by HA visual editor
-    static async getConfigElement() {
+    static getConfigElement() {
         return document.createElement("lovelace-personal-wakeup-card-editor");
     }
     static getStubConfig() {
@@ -258,8 +264,12 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
     }
     _snooze() {
         const entityId = this._config.entity;
+        const stateObj = this._getEntity();
+        const defaultMinutes = Number(stateObj?.attributes?.snooze_minutes ?? 10);
+        const durationMinutes = this._snoozeMinutes ?? defaultMinutes;
         this.hass.callService("personal_wakeup", "snooze", {
-            entity_id: entityId
+            entity_id: entityId,
+            duration_minutes: durationMinutes
         });
     }
     _stop() {
@@ -292,7 +302,8 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         const canStop = Boolean(attrs.can_stop) ||
             stateObj.state === "triggered" ||
             stateObj.state === "snoozed";
-        const snoozeMinutes = Number(attrs.snooze_minutes ?? 10);
+        const defaultSnoozeMinutes = Number(attrs.snooze_minutes ?? 10);
+        const snoozeMinutes = this._snoozeMinutes ?? defaultSnoozeMinutes;
         const fadeMinutes = Math.round(fadeDuration / 60);
         const volumePercent = Math.round(volume * 100);
         const title = this._config.name || stateObj.attributes.friendly_name || "Wakeup Alarm";
@@ -403,7 +414,7 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
         </div>
 
         <div class="footer">
-          <div>
+          <div class="footer-block">
             Next alarm:<br />
             <span class="value">
               ${this._formatNextFire(nextFire)}
@@ -411,33 +422,56 @@ let PersonalWakeupCard = class PersonalWakeupCard extends i {
             ${personEntity
             ? x `<div class="small">Person: ${personEntity}</div>`
             : E}
-          </div>
-          <div class="actions">
-            <button class="action" type="button" @click=${() => this._triggerNow()}>
-              Trigger now
-            </button>
             ${canSnooze
             ? x `
-                  <button
-                    class="action action-secondary"
-                    type="button"
-                    @click=${() => this._snooze()}
-                  >
-                    Snooze ${snoozeMinutes} min
-                  </button>
+                  <div class="snooze-control">
+                    <div class="snooze-header">
+                      <span class="label">Snooze delay</span>
+                      <span class="value">${snoozeMinutes} min</span>
+                    </div>
+                    <ha-slider
+                      min="5"
+                      max="60"
+                      step="5"
+                      .value=${snoozeMinutes}
+                      @input=${(e) => {
+                this._snoozeMinutes = Number(e.target.value);
+            }}
+                    ></ha-slider>
+                  </div>
                 `
             : E}
-            ${canStop
+            <div class="actions">
+              <button
+                class="action"
+                type="button"
+                @click=${() => this._triggerNow()}
+              >
+                Trigger now
+              </button>
+              ${canSnooze
             ? x `
-                  <button
-                    class="action action-danger"
-                    type="button"
-                    @click=${() => this._stop()}
-                  >
-                    Stop
-                  </button>
-                `
+                    <button
+                      class="action action-secondary"
+                      type="button"
+                      @click=${() => this._snooze()}
+                    >
+                      Snooze ${snoozeMinutes} min
+                    </button>
+                  `
             : E}
+              ${canStop
+            ? x `
+                    <button
+                      class="action action-danger"
+                      type="button"
+                      @click=${() => this._stop()}
+                    >
+                      Stop
+                    </button>
+                  `
+            : E}
+            </div>
           </div>
         </div>
       </ha-card>
@@ -500,13 +534,14 @@ PersonalWakeupCard.styles = i$3 `
 
     .footer {
       margin-top: 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
       font-size: 0.8rem;
       color: var(--secondary-text-color);
+    }
+
+    .footer-block {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .time-input {
@@ -532,6 +567,20 @@ PersonalWakeupCard.styles = i$3 `
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
+    }
+
+    .snooze-control {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-width: 280px;
+    }
+
+    .snooze-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 12px;
     }
 
     .action {
@@ -584,6 +633,9 @@ __decorate([
 __decorate([
     r()
 ], PersonalWakeupCard.prototype, "_config", void 0);
+__decorate([
+    r()
+], PersonalWakeupCard.prototype, "_snoozeMinutes", void 0);
 PersonalWakeupCard = __decorate([
     t("lovelace-personal-wakeup-card")
 ], PersonalWakeupCard);

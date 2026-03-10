@@ -35,7 +35,9 @@ export class PersonalWakeupCardEditor extends LitElement {
     }
 
     const event = new CustomEvent("config-changed", {
-      detail: { config: newConfig }
+      detail: { config: newConfig },
+      bubbles: true,
+      composed: true
     });
     this.dispatchEvent(event);
   }
